@@ -1,0 +1,38 @@
+# Virtual Environment
+/venv/*
+
+# Python
+/__pycache__/*
+*.pyc
+*.pyo
+*.egg-info/
+dist/
+build/
+
+# Flask
+/instance/*
+
+# Environment Variables
+.env
+.env.local
+
+# Database
+*.db
+*.sqlite
+*.sqlite3
+
+# IDE
+.idea/
+.vscode/
+
+# Testing & Coverage
+.pytest_cache/
+.coverage
+htmlcov/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
