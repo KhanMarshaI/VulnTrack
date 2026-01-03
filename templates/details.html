@@ -1,0 +1,172 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.7.0/styles/github-dark.min.css">
+
+<style>
+    /* Details Page Specific Styles */
+    .severity-badge-lg {
+        font-size: 1.2rem;
+        padding: 8px 16px;
+        border-radius: 6px;
+        text-transform: uppercase;
+        font-weight: 800;
+        display: inline-block;
+    }
+    .sev-critical { background-color: #dc3545; color: white; }
+    .sev-high { background-color: #fd7e14; color: white; }
+    .sev-medium { background-color: #ffc107; color: black; }
+    .sev-low { background-color: #198754; color: white; }
+    .sev-none { background-color: #6c757d; color: white; }
+
+    .meta-label {
+        font-size: 0.85rem;
+        text-transform: uppercase;
+        color: #6c757d;
+        font-weight: 700;
+        margin-bottom: 2px;
+    }
+    .meta-value {
+        font-size: 1rem;
+        font-weight: 500;
+        margin-bottom: 15px;
+        word-break: break-word;
+    }
+    /* Markdown image constraints */
+    .markdown-body img {
+        max-width: 100%;
+        border-radius: 5px;
+        border: 1px solid #ddd;
+    }
+    .cvss-vector-box {
+        background: #f8f9fa;
+        border: 1px solid #e9ecef;
+        padding: 10px;
+        font-family: monospace;
+        border-radius: 4px;
+        font-size: 0.9em;
+        color: #d63384;
+    }
+</style>
+
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="d-flex justify-content-between align-items-start">
+            <div>
+                <h5 class="text-muted mb-1">{{ vuln.cve_id }}</h5>
+                <h1 class="fw-bold">{{ vuln.title }}</h1>
+            </div>
+            {% set s = vuln.cvss_severity|lower %}
+            <div class="text-end">
+                <div class="severity-badge-lg sev-{{ s }}">
+                    {{ vuln.cvss_severity }} ({{ vuln.cvss_score }})
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-lg-8">
+        <div class="card shadow-sm mb-4">
+            <div class="card-header bg-white py-3">
+                <h5 class="m-0 fw-bold text-primary">Vulnerability Report</h5>
+            </div>
+            <div class="card-body">
+                <textarea id="raw-markdown" style="display:none;">{{ vuln.description }}</textarea>
+                
+                <div id="markdown-render" class="markdown-body">
+                    <div class="text-center py-5">
+                        <div class="spinner-border text-primary" role="status"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-4">
+        
+        <div class="card shadow-sm mb-4">
+            <div class="card-header bg-white fw-bold">Affected Asset</div>
+            <div class="card-body">
+                <div class="meta-label">Product</div>
+                <div class="meta-value">{{ vuln.product_vendor }} {{ vuln.product_name }}</div>
+
+                <div class="meta-label">Version</div>
+                <div class="meta-value badge bg-secondary">{{ vuln.product_version }}</div>
+
+                <div class="meta-label">Environment</div>
+                <div class="meta-value text-capitalize">{{ vuln.product_env.value }}</div>
+
+                <div class="meta-label">Link</div>
+                <div class="meta-value"><a href="{{ vuln.product_link }}" target="_blank">Open Asset ↗</a></div>
+            </div>
+        </div>
+
+        <div class="card shadow-sm mb-4">
+            <div class="card-header bg-white fw-bold">Technical Details</div>
+            <div class="card-body">
+                <div class="meta-label">Vulnerability Type</div>
+                <div class="meta-value">{{ vuln.vulnerability_name }} ({{ vuln.type.value }})</div>
+
+                <div class="meta-label">CVSS Vector</div>
+                <div class="cvss-vector-box mb-3">{{ vuln.cvss_vector }}</div>
+
+                <div class="meta-label">Reporter</div>
+                <div class="meta-value">
+                    <img src="https://ui-avatars.com/api/?name={{ vuln.reporter }}&background=random" class="rounded-circle me-1" width="24">
+                    {{ vuln.reporter }}
+                </div>
+            </div>
+        </div>
+
+        <div class="card shadow-sm">
+            <div class="card-header bg-white fw-bold">Timeline</div>
+            <div class="card-body">
+                <div class="d-flex justify-content-between mb-2">
+                    <span class="text-muted">Reported:</span>
+                    <span class="fw-bold">{{ vuln.report_date.strftime('%Y-%m-%d') }}</span>
+                </div>
+                <div class="d-flex justify-content-between">
+                    <span class="text-muted">Disclosed:</span>
+                    {% if vuln.disclose_date %}
+                        <span class="fw-bold text-success">{{ vuln.disclose_date.strftime('%Y-%m-%d') }}</span>
+                    {% else %}
+                        <span class="badge bg-warning text-dark">Not Disclosed</span>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/dompurify/3.0.1/purify.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.7.0/highlight.min.js"></script>
+
+<script>
+    document.addEventListener("DOMContentLoaded", function() {
+        // 1. Get raw markdown
+        const rawMarkdown = document.getElementById('raw-markdown').value;
+        
+        // 2. Configure Marked.js
+        marked.setOptions({
+            highlight: function(code, lang) {
+                const language = hljs.getLanguage(lang) ? lang : 'plaintext';
+                return hljs.highlight(code, { language }).value;
+            },
+            langPrefix: 'hljs language-',
+            breaks: true,
+            gfm: true
+        });
+
+        // 3. Convert & Sanitize
+        const dirtyHTML = marked.parse(rawMarkdown);
+        const cleanHTML = DOMPurify.sanitize(dirtyHTML, { USE_PROFILES: { html: true } });
+
+        // 4. Inject
+        document.getElementById('markdown-render').innerHTML = cleanHTML;
+    });
+</script>
+{% endblock %}

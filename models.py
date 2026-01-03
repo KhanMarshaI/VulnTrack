@@ -34,6 +34,7 @@ class Vulnerability(db.Model):
     reporter: Mapped[str] = mapped_column(nullable=False)
     report_date: Mapped[date] = mapped_column(nullable=False)
     disclose_date: Mapped[date] = mapped_column(nullable=True)
+    description: Mapped[str] = mapped_column(nullable=False)
 
     def __repr__(self) -> str:
         return f'{self.cve_id}'
