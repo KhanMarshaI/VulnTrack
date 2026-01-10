@@ -144,11 +144,12 @@
             </div>
 
             <div class="d-flex align-items-center gap-3 position-relative" style="z-index: 2;">
-                <a href="#" class="action-btn edit" title="Edit Record">
+                <a href="{{ url_for('edit_vulnerability', id=v.id) }}" class="action-btn edit" title="Edit Record">
                     <i class="fa-solid fa-pen"></i>
                 </a>
                 
-                <form action="#" method="POST" onsubmit="return confirm('Are you sure you want to delete {{ v.cve_id }}?');" class="m-0">
+                <form action="{{ url_for('delete_vulnerability', id=v.id) }}" method="POST" onsubmit="return confirm('Are you sure you want to delete {{ v.cve_id }}?');" class="m-0">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
                     <button type="submit" class="btn btn-link p-0 action-btn delete border-0 bg-transparent" title="Delete">
                         <i class="fa-solid fa-trash"></i>
                     </button>

@@ -1,0 +1,291 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<style>
+    /* Page Specific Styles */
+    .cvss-selector-group {
+        background-color: #f8f9fa;
+        padding: 15px;
+        border-radius: 8px;
+        margin-bottom: 20px;
+        border: 1px solid #dee2e6;
+    }
+    .cvss-result-box {
+        background-color: #2c3e50;
+        color: white;
+        padding: 15px;
+        border-radius: 8px;
+        text-align: center;
+    }
+    .score-display { font-size: 2.5em; font-weight: bold; }
+    .severity-badge { padding: 5px 10px; border-radius: 4px; text-transform: uppercase; font-weight: bold;}
+    .sev-critical { background-color: #dc3545; color: white; }
+    .sev-high { background-color: #fd7e14; color: white; }
+    .sev-medium { background-color: #ffc107; color: black; }
+    .sev-low { background-color: #198754; color: white; }
+    .sev-none { background-color: #6c757d; color: white; }
+</style>
+
+<div class="card shadow mb-5">
+    <div class="card-header bg-warning text-dark">
+        <h3 class="m-0"><i class="fa-solid fa-pen me-2"></i>Edit Vulnerability Record</h3>
+    </div>
+    <div class="card-body">
+        <form action="{{ url_for('edit_vulnerability', id=vuln.id) }}" method="POST">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+            
+            <h5 class="mb-3 text-secondary">General Information</h5>
+            <div class="row mb-3">
+                <div class="col-md-6">
+                    <label class="form-label">Report Title</label>
+                    <input type="text" class="form-control" name="title" required placeholder="e.g. RCE in Login Module" value="{{ vuln.title }}">
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">CVE ID</label>
+                    <input type="text" class="form-control" name="cve_id" required placeholder="CVE-202X-XXXX" value="{{ vuln.cve_id }}">
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">Vulnerability Name</label>
+                    <input type="text" class="form-control" name="vulnerability_name" required placeholder="e.g. SQL Injection" value="{{ vuln.vulnerability_name }}">
+                </div>
+            </div>
+
+            <hr>
+            <h5 class="mb-3 text-secondary">CVSS 3.1 Calculator</h5>
+            
+            <input type="hidden" name="cvss_vector" id="cvss_vector" value="{{ vuln.cvss_vector }}">
+            <input type="hidden" name="cvss_score" id="cvss_score" value="{{ vuln.cvss_score }}">
+            <input type="hidden" name="cvss_severity" id="cvss_severity" value="{{ vuln.cvss_severity }}">
+
+            <div class="row">
+                <div class="col-md-8">
+                    <div class="row cvss-selector-group">
+                        <div class="col-md-4 mb-3">
+                            <label class="form-label fw-bold">Attack Vector</label>
+                            <select class="form-select cvss-input" id="av" onchange="calculateCVSS()">
+                                <option value="N">Network (N)</option>
+                                <option value="A">Adjacent (A)</option>
+                                <option value="L">Local (L)</option>
+                                <option value="P">Physical (P)</option>
+                            </select>
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <label class="form-label fw-bold">Complexity</label>
+                            <select class="form-select cvss-input" id="ac" onchange="calculateCVSS()">
+                                <option value="L">Low (L)</option>
+                                <option value="H">High (H)</option>
+                            </select>
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <label class="form-label fw-bold">Privileges</label>
+                            <select class="form-select cvss-input" id="pr" onchange="calculateCVSS()">
+                                <option value="N">None (N)</option>
+                                <option value="L">Low (L)</option>
+                                <option value="H">High (H)</option>
+                            </select>
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <label class="form-label fw-bold">User Interaction</label>
+                            <select class="form-select cvss-input" id="ui" onchange="calculateCVSS()">
+                                <option value="N">None (N)</option>
+                                <option value="R">Required (R)</option>
+                            </select>
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <label class="form-label fw-bold">Scope</label>
+                            <select class="form-select cvss-input" id="s" onchange="calculateCVSS()">
+                                <option value="U">Unchanged (U)</option>
+                                <option value="C">Changed (C)</option>
+                            </select>
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <label class="form-label fw-bold text-danger">Confidentiality</label>
+                            <select class="form-select cvss-input" id="c" onchange="calculateCVSS()">
+                                <option value="H">High (H)</option>
+                                <option value="L">Low (L)</option>
+                                <option value="N">None (N)</option>
+                            </select>
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <label class="form-label fw-bold text-danger">Integrity</label>
+                            <select class="form-select cvss-input" id="i" onchange="calculateCVSS()">
+                                <option value="H">High (H)</option>
+                                <option value="L">Low (L)</option>
+                                <option value="N">None (N)</option>
+                            </select>
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <label class="form-label fw-bold text-danger">Availability</label>
+                            <select class="form-select cvss-input" id="a" onchange="calculateCVSS()">
+                                <option value="H">High (H)</option>
+                                <option value="L">Low (L)</option>
+                                <option value="N">None (N)</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-md-4">
+                    <div class="cvss-result-box h-100 d-flex flex-column justify-content-center">
+                        <h4>CVSS Score</h4>
+                        <div class="score-display" id="score_display">{{ vuln.cvss_score }}</div>
+                        <div class="mt-2"><span id="severity_badge" class="severity-badge sev-{{ vuln.cvss_severity|lower }}">{{ vuln.cvss_severity }}</span></div>
+                        <small class="mt-3 text-muted d-block" id="vector_display" style="word-break: break-all;">{{ vuln.cvss_vector }}</small>
+                    </div>
+                </div>
+            </div>
+
+            <hr>
+            <h5 class="mb-3 text-secondary">Product & Environment</h5>
+            <div class="row mb-3">
+                <div class="col-md-6">
+                    <label class="form-label">Product Name</label>
+                    <input type="text" class="form-control" name="product_name" required value="{{ vuln.product_name }}">
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label">Vendor</label>
+                    <input type="text" class="form-control" name="product_vendor" required value="{{ vuln.product_vendor }}">
+                </div>
+            </div>
+
+            <div class="row mb-3">
+                <div class="col-md-4">
+                    <label class="form-label">Category</label>
+                    <select class="form-select" name="type" required>
+                        {% for type in vuln_types %}
+                        <option value="{{ type.value }}" {% if type.value == vuln.type.value %}selected{% endif %}>{{ type.name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label">Environment</label>
+                    <select class="form-select" name="product_env" required>
+                        {% for env in prod_envs %}
+                        <option value="{{ env.value }}" {% if env.value == vuln.product_env.value %}selected{% endif %}>{{ env.name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label">Version</label>
+                    <input type="text" class="form-control" name="product_version" placeholder="1.0.0" required value="{{ vuln.product_version }}">
+                </div>
+            </div>
+
+            <div class="mb-3">
+                <label class="form-label">Product Link</label>
+                <input type="url" class="form-control" name="product_link" placeholder="https://..." required value="{{ vuln.product_link }}">
+            </div>
+
+            <hr>
+            <h5 class="mb-3 text-secondary">Vulnerability Details (Markdown)</h5>
+            <div class="mb-3">
+                <label class="form-label">Proof of Concept & Description</label>
+                <textarea class="form-control font-monospace" name="description" rows="15" placeholder="## Summary&#10;Describe the vulnerability...&#10;&#10;## Steps to Reproduce&#10;1. Go to...&#10;2. Payload..." required>{{ vuln.description }}</textarea>
+                <div class="form-text">Supports Markdown (Headings, code blocks, lists).</div>
+            </div>
+
+            <hr>
+            <h5 class="mb-3 text-secondary">Meta Data</h5>
+            <div class="row mb-3">
+                <div class="col-md-4">
+                    <label class="form-label">Reporter</label>
+                    <input type="text" class="form-control" name="reporter" required value="{{ vuln.reporter }}">
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label">Report Date</label>
+                    <input type="date" class="form-control" name="report_date" required value="{{ vuln.report_date.strftime('%Y-%m-%d') }}">
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label">Disclosure Date (Optional)</label>
+                    <input type="date" class="form-control" name="disclose_date" value="{% if vuln.disclose_date %}{{ vuln.disclose_date.strftime('%Y-%m-%d') }}{% endif %}">
+                </div>
+            </div>
+
+            <div class="d-flex gap-2">
+                <button type="submit" class="btn btn-primary flex-fill py-2 fw-bold">
+                    <i class="fa-solid fa-save me-1"></i> Save Changes
+                </button>
+                <a href="{{ url_for('vulnerability_details', id=vuln.id) }}" class="btn btn-secondary py-2 px-4">
+                    <i class="fa-solid fa-times me-1"></i> Cancel
+                </a>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+    const weights = {
+        AV: { N: 0.85, A: 0.62, L: 0.55, P: 0.20 },
+        AC: { L: 0.77, H: 0.44 },
+        PR: { U: { N: 0.85, L: 0.62, H: 0.27 }, C: { N: 0.85, L: 0.68, H: 0.50 } },
+        UI: { N: 0.85, R: 0.62 },
+        S:  { U: 6.42, C: 7.52 },
+        CIA: { H: 0.56, L: 0.22, N: 0.00 }
+    };
+
+    function roundup(input) {
+        let int_input = Math.round(input * 100000);
+        return (int_input % 10000 === 0) ? int_input / 100000.0 : (Math.floor(int_input / 10000) + 1) / 10.0;
+    }
+
+    function calculateCVSS() {
+        const av = document.getElementById('av').value;
+        const ac = document.getElementById('ac').value;
+        const pr = document.getElementById('pr').value;
+        const ui = document.getElementById('ui').value;
+        const s  = document.getElementById('s').value;
+        const c  = document.getElementById('c').value;
+        const i  = document.getElementById('i').value;
+        const a  = document.getElementById('a').value;
+
+        const vectorString = `CVSS:3.1/AV:${av}/AC:${ac}/PR:${pr}/UI:${ui}/S:${s}/C:${c}/I:${i}/A:${a}`;
+        document.getElementById('cvss_vector').value = vectorString;
+        document.getElementById('vector_display').innerText = vectorString;
+
+        const iss = 1 - ( (1 - weights.CIA[c]) * (1 - weights.CIA[i]) * (1 - weights.CIA[a]) );
+        let impact = (s === 'U') ? 6.42 * iss : 7.52 * (iss - 0.029) - 3.25 * Math.pow((iss - 0.02), 15);
+        const prWeight = weights.PR[s][pr];
+        const exploitability = 8.22 * weights.AV[av] * weights.AC[ac] * prWeight * weights.UI[ui];
+
+        let baseScore = 0;
+        if (impact > 0) {
+            baseScore = (s === 'U') ? roundup(Math.min((impact + exploitability), 10)) : roundup(Math.min(1.08 * (impact + exploitability), 10));
+        }
+
+        document.getElementById('score_display').innerText = baseScore.toFixed(1);
+        document.getElementById('cvss_score').value = baseScore.toFixed(1);
+
+        let severity = "None";
+        let badgeClass = "sev-none";
+        if (baseScore >= 0.1 && baseScore <= 3.9) { severity = "Low"; badgeClass = "sev-low"; }
+        else if (baseScore >= 4.0 && baseScore <= 6.9) { severity = "Medium"; badgeClass = "sev-medium"; }
+        else if (baseScore >= 7.0 && baseScore <= 8.9) { severity = "High"; badgeClass = "sev-high"; }
+        else if (baseScore >= 9.0) { severity = "Critical"; badgeClass = "sev-critical"; }
+
+        const badge = document.getElementById('severity_badge');
+        badge.innerText = severity;
+        badge.className = "severity-badge " + badgeClass;
+        document.getElementById('cvss_severity').value = severity;
+    }
+
+    // Parse existing CVSS vector and set form values
+    function parseCVSSVector() {
+        const vectorString = "{{ vuln.cvss_vector }}";
+        const vectorParts = vectorString.split('/');
+        
+        vectorParts.forEach(part => {
+            const [key, value] = part.split(':');
+            const elementId = key.toLowerCase();
+            const element = document.getElementById(elementId);
+            if (element && value) {
+                element.value = value;
+            }
+        });
+    }
+
+    window.onload = function() {
+        parseCVSSVector();
+        calculateCVSS();
+    };
+</script>
+{% endblock %}

@@ -1,8 +1,6 @@
-from flask import Flask, render_template, request, redirect, url_for
+from flask import Flask, render_template, request, redirect, url_for, flash
 from flask_wtf.csrf import CSRFProtect
 from models import db, Vulnerability, VulnerabilityType, ProductEnvironment
-from cvss import CVSS3
-import markdown
 from datetime import date
 import secrets
 from sqlalchemy import func
@@ -70,6 +68,7 @@ def create_vulnerability():
         
         db.session.add(new_vuln)
         db.session.commit()
+        flash('Vulnerability created successfully!', 'success')
         return redirect(url_for('index'))
 
     # enums -> dropdown generation
@@ -84,6 +83,63 @@ def vulnerability_details(id):
     vuln = db.session.execute(db.select(Vulnerability).where(Vulnerability.id == id)).scalar_one_or_none()
     
     if not vuln:
-        return "Vulnerability not found", 404
+        flash('Vulnerability not found', 'danger')
+        return redirect(url_for('index'))
         
     return render_template('details.html', vuln=vuln)
+
+@app.route('/vulnerability/<int:id>/edit', methods=['GET', 'POST'])
+def edit_vulnerability(id):
+    vuln = db.session.execute(db.select(Vulnerability).where(Vulnerability.id == id)).scalar_one_or_none()
+    
+    if not vuln:
+        flash('Vulnerability not found', 'danger')
+        return redirect(url_for('index'))
+    
+    if request.method == 'POST':
+        # Update all fields
+        vuln.title = request.form['title']
+        vuln.cve_id = request.form['cve_id']
+        vuln.cvss_vector = request.form['cvss_vector']
+        vuln.cvss_score = float(request.form['cvss_score'])
+        vuln.cvss_severity = request.form['cvss_severity']
+        vuln.vulnerability_name = request.form['vulnerability_name']
+        vuln.type = VulnerabilityType(request.form['type'])
+        vuln.product_env = ProductEnvironment(request.form['product_env'])
+        vuln.product_name = request.form['product_name']
+        vuln.product_vendor = request.form['product_vendor']
+        vuln.product_version = request.form['product_version']
+        vuln.product_link = request.form['product_link']
+        vuln.description = request.form['description']
+        vuln.reporter = request.form['reporter']
+        vuln.report_date = date.fromisoformat(request.form['report_date'])
+        vuln.disclose_date = date.fromisoformat(request.form['disclose_date']) if request.form['disclose_date'] else None
+        
+        db.session.commit()
+        flash(f'Vulnerability {vuln.cve_id} updated successfully!', 'success')
+        return redirect(url_for('vulnerability_details', id=id))
+    
+    return render_template(
+        'edit.html',
+        vuln=vuln,
+        vuln_types=VulnerabilityType,
+        prod_envs=ProductEnvironment
+    )
+
+@app.route('/vulnerability/<int:id>/delete', methods=['POST'])
+def delete_vulnerability(id):
+    vuln = db.session.execute(db.select(Vulnerability).where(Vulnerability.id == id)).scalar_one_or_none()
+    
+    if not vuln:
+        flash('Vulnerability not found', 'danger')
+        return redirect(url_for('index'))
+    
+    cve_id = vuln.cve_id
+    db.session.delete(vuln)
+    db.session.commit()
+    
+    flash(f'Vulnerability {cve_id} has been deleted', 'warning')
+    return redirect(url_for('index'))
+
+if __name__ == '__main__':
+    app.run(debug=False)
